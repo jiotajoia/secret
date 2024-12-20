@@ -13,6 +13,7 @@ class Group extends Model
 
     public function participants()
     {
-        return $this->belongsToMany(User::class, 'participants');
+        return $this->belongsToMany(User::class, 'participants')
+                ->withPivot('name', 'match_id');
     }
 }

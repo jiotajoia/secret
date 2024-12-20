@@ -165,7 +165,7 @@ public function it_can_delete_a_group()
 
      // Verifica se o usuário é redirecionado para a página de participantes com erro
      $response->assertRedirect(route('groups.group.participants', ['group' => $group->id]));
-     $response->assertSessionHas('error', 'Erro ao gerar os matches. Tente novamente.');
+     $response->assertSessionHas('error', 'Usuário não é participante');
  }
 
  public function test_generateMatches_not_enough_participants()
@@ -231,7 +231,7 @@ public function it_can_delete_a_group()
 
      // Verifica se o redirecionamento ocorre com erro devido à falta de participantes
      $response->assertRedirect(route('groups.group.participants', ['group' => $group->id]));
-     $response->assertSessionHas('error', 'Erro ao gerar os matches. Tente novamente.');
+     $response->assertSessionHas('error', 'Número inválido de participantes: mínimo 2.');
  }
 
 

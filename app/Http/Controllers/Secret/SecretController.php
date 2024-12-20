@@ -72,7 +72,9 @@ class SecretController extends Controller
 
         $user = User::where('email', $request->email)->first();
 
-        if ($group->participants->contains($user)) {
+        $alreadyParticipant = $group->participants()->where('user_id', $user->id)->exists();
+
+        if ($alreadyParticipant) {
             return redirect()->route('groups.group.participants', $group->id)
                              ->with('error', 'O usuário já está como participante neste grupo');
         }
@@ -85,15 +87,25 @@ class SecretController extends Controller
 
     public function generateMatches(Group $group)
     {
-        // $user = auth()->user();
+        $user = auth()->user();
+
+        $userParticipant = $group->participants()->where('user_id', $user->id)->exists();
+
+        if(!$userParticipant){
+            return redirect()->route('groups.group.participants', ['group' => $group->id])->with('error', 'Usuário não é participante');
+        }
+
+        $participants = $group->participants;
+
+        if($participants->count() < 2 ){
+            return redirect()->route('groups.group.participants', ['group' => $group->id])->with('error', 'Número inválido de participantes: mínimo 2.');
+        }
+
         
-        // $users = $group->participants()->join('users as u1', 'u1.id', '=', 'participants.user_id')->select('u1.id')->pluck('u1.id')->shuffle();
+        $participants = $participants->shuffle();
 
-        // if ($users->count() < 2) {
-        //     //return response()->json(['error' => 'número inválido de participante: mínimo 2'], 400);
-        // }
+        $matches = $participants->zip($participants->skip(1)->push($participants->first()));
 
-        // $matches = $users->zip($users->skip(1)->push($users->first()));
 
         // $matches->each(function ($pair) use ($group) {
         //     $giver = $pair[0];
@@ -130,10 +142,20 @@ class SecretController extends Controller
         return redirect()->route('groups.group.participants', ['group' => $group->id])->with('success', 'Participante removido com sucesso do grupo');
     }
 
-    public function getMatch(Group $group, Participant $participant)
+    public function getMatch(Group $group, User $user)
     {
-        $match = Participant::find($participant->match_id);
+        $userP = Participant::where('user_id', $user->id)
+                ->where('group_id', $group->id)
+                ->first();
 
+        if(!$userP){
+            return redirect()->route('groups.group.participants', ['group' => $group->id])
+            ->with('error', 'O usuário não é participante neste grupo');
+        }
+
+        $match = $userP->match_id;
+
+        return view('match', compact('match'));
         //return response()->json(['match' => $match]);
     }
 
