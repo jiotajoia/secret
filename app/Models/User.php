@@ -42,4 +42,10 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
     ];
+
+    public function group()
+    {
+        return $this->belongsToMany(Group::class, 'participants')
+                ->withPivot('match_id');
+    }
 }

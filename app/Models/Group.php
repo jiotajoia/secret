@@ -13,6 +13,6 @@ class Group extends Model
 
     public function participants()
     {
-        return $this->hasMany(Participant::class);
+        return $this->belongsToMany(User::class, 'participants');
     }
 }
