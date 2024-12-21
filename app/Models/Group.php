@@ -16,4 +16,9 @@ class Group extends Model
         return $this->belongsToMany(User::class, 'participants')
                 ->withPivot('name', 'match_id');
     }
+
+    public function owner()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 }

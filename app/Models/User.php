@@ -48,4 +48,10 @@ class User extends Authenticatable
         return $this->belongsToMany(Group::class, 'participant')
                 ->withPivot('match_id');
     }
+
+    public function ownedGroups()
+    {
+        return $this->hasMany(Group::class, 'user_id');
+    }
+
 }
