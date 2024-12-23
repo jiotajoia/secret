@@ -43,9 +43,9 @@ class User extends Authenticatable
         'password' => 'hashed',
     ];
 
-    public function group()
+    public function groups()
     {
-        return $this->belongsToMany(Group::class, 'participant')
+        return $this->belongsToMany(Group::class, 'participants')
                 ->withPivot('match_id');
     }
 

@@ -12,11 +12,12 @@ class SecretController extends Controller
 {
 
     public function getGroups(){
-        $groups = Group::all();
+        $user = auth()->user();
+
+        $groups = $user->groups;
         $title = 'Grupos';
 
         return view('', compact('groups', 'title'));
-
     }
 
     public function createGroup(){
@@ -26,8 +27,11 @@ class SecretController extends Controller
     }
    
     public function storeGroup(Request $request){
+        $user = auth()->user();
+
         $group = Group::create([
             'name' => $request->name,
+            'user_id' => $user->id,
         ]);
 
         //return response()->json($group, 201);
@@ -53,6 +57,15 @@ class SecretController extends Controller
             'name' => 'required|string|max:255',
         ]);
 
+        $user = auth()->user();
+
+        $owner_id = $group->user_id;
+
+        if($user->id != $owner_id){
+            return redirect()->route('groups.group.participants', $group->id)
+            ->with('error', 'O usuário não é dono do grupo');
+        }
+
         $group->update([
             'name' => $request->name,
         ]);
@@ -61,6 +74,15 @@ class SecretController extends Controller
     }
 
     public function destroyGroup(Request $request, Group $group){
+        $user = auth()->user();
+
+        $owner_id = $group->user_id;
+
+        if($user->id != $owner_id){
+            return redirect()->route('groups.group.participants', $group->id)
+            ->with('error', 'O usuário não é dono do grupo');
+        }
+
         $group->delete();
 
         return redirect()->route('groups')->with('success', 'Grupo excluído com sucesso');
@@ -71,16 +93,25 @@ class SecretController extends Controller
             'email' => 'required|email|exists:users,email',
         ]);
 
-        $user = User::where('email', $request->email)->first();
+        $user = auth()->user();
 
-        $alreadyParticipant = $group->participants()->where('user_id', $user->id)->exists();
+        $owner_id = $group->user_id;
+
+        if($user->id != $owner_id){
+            return redirect()->route('groups.group.participants', $group->id)
+            ->with('error', 'O usuário não é dono do grupo');
+        }
+
+        $participant = User::where('email', $request->email)->first();
+
+        $alreadyParticipant = $group->participants()->where('user_id', $participant->id)->exists();
 
         if ($alreadyParticipant) {
             return redirect()->route('groups.group.participants', $group->id)
                              ->with('error', 'O usuário já está como participante neste grupo');
         }
 
-        $group->participants()->attach($user->id, ['name' => $user->name]);
+        $group->participants()->attach($participant->id, ['name' => $participant->name]);
 
         return redirect()->route('groups.group.participants', ['group' => $group->id])->with('success', 'Participante inserido com sucesso');
 
@@ -90,10 +121,11 @@ class SecretController extends Controller
     {
         $user = auth()->user();
 
-        $userParticipant = $group->participants()->where('user_id', $user->id)->exists();
+        $owner_id = $group->user_id;
 
-        if(!$userParticipant){
-            return redirect()->route('groups.group.participants', ['group' => $group->id])->with('error', 'Usuário não é participante');
+        if($user->id != $owner_id){
+            return redirect()->route('groups.group.participants', $group->id)
+            ->with('error', 'O usuário não é dono do grupo');
         }
 
         $participants = $group->participants;
@@ -102,33 +134,20 @@ class SecretController extends Controller
             return redirect()->route('groups.group.participants', ['group' => $group->id])->with('error', 'Número inválido de participantes: mínimo 2.');
         }
 
-        
         $participants = $participants->shuffle();
 
         $matches = $participants->zip($participants->skip(1)->push($participants->first()));
 
+        foreach($matches as $match){
+            $giver = $match[0];
+            $receiver = $match[1];
 
-        // $matches->each(function ($pair) use ($group) {
-        //     $giver = $pair[0];
-        //     $receiver = $pair[1];
-        
-        //     $group->participants()->updateExistingPivot($giver, ['match_id' => $receiver]);
-        // });
+            $group->participants()->updateExistingPivot($giver->id, [
+                'name' => $receiver->name,
+                'match_id' => $receiver->id,
+            ]);
+        }
 
-        // $participant = $group->participants()->where('user_id', $user->id)->first();
-
-        // if ($participant && $participant->match_id) {
-        //     // Se o usuário tem um match_id, redireciona para a página onde ele pode ver o sorteio
-        //     return redirect()->route('groups.group.participant.getMatch', [
-        //         'group' => $group->id, 
-        //         'user' => $participant->match_id
-        //     ])->with('success', 'Sorteio realizado com sucesso!');
-        // }
-    
-        // // Caso contrário, redireciona para a página de participantes com uma mensagem de erro
-        // return redirect()->route('groups.group.participants', ['group' => $group->id])
-        //                  ->with('error', 'Erro ao gerar os matches. Tente novamente.');
-        //return response()->json(['message' => 'Matches gerados com sucesso!']);
     }
 
     public function removeParticipant(Group $group, User $user){
